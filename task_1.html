@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Задача</title>
+    <style>
+      .product-container {
+        display: flex;
+        align-items: center;
+        border: 2px solid black;
+        width: 900px;
+        justify-content: space-between;
+        height: 80px;
+        padding: 10px;
+        font-size: 20px;
+        margin-bottom: 10px;
+      }
+      .image-container {
+        width: 70px;
+        height: 70px;
+      }
+      .image-container img {
+        max-width: 100%;
+        min-height: 100%;
+      }
+      .product-about {
+      }
+      .product-actions-container {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      .product-to-pay {
+        display: flex;
+        gap: 3px;
+      }
+      .products-container {
+      }
+      .total-pay {
+        font-size: 24px;
+      }
+      .total-pay span{
+				color:  red;
+				font-weight: bold;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h2>
+        Дано перелік товарів у кошику. При зміні кількості одиниць товару
+        збільшувати загальну вартість. Створити клас Product, що призначений для
+        маніпуляцій товаром та клас ProductManager що оперує з усіма товарами
+        (через подію передвати ідентифікатор товару та операцію, що зроблена)
+      </h2>
+    </header>
+    <main>
+      <div class="cnt"></div>
+    </main>
+    <script>
+      class Product {
+        constructor(product) {
+          this.product = product;
+          this.el = this.render();
+        }
+        creatImage() {
+          const conatiner = document.createElement("div");
+          conatiner.className = "image-container";
+
+          const image = document.createElement("img");
+          image.setAttribute("src", this.product.link);
+          conatiner.append(image);
+
+          return conatiner;
+        }
+
+        creatAbout() {
+          const aboutEl = document.createElement("div");
+          aboutEl.className = "product-about";
+          aboutEl.innerText = this.product.about;
+
+          return aboutEl;
+        }
+
+        sendEvent(eventType) {
+          const event = new CustomEvent(eventType, {
+            detail: { product: this.product },
+            bubbles: true,
+          });
+          this.el.dispatchEvent(event);
+        }
+
+        updatePrice() {
+          this.totalPrice.innerText = this.product.count * this.product.price;
+        }
+
+        updateCount() {
+          this.spanCount.innerText = this.product.count;
+        }
+
+        onSubtractEvent() {
+          if (this.product.count > 1) {
+            this.product.count--;
+            this.updateCount();
+            this.updatePrice();
+            this.sendEvent("subtract");
+          }
+        }
+
+        onAddEvent() {
+          this.product.count++;
+          this.updateCount();
+          this.updatePrice();
+          this.sendEvent("add");
+        }
+
+        creatActions() {
+          const container = document.createElement("div");
+          container.className = "product-actions-container";
+
+          const subtractBtn = document.createElement("button");
+          subtractBtn.innerText = "-";
+          subtractBtn.onclick = this.onSubtractEvent.bind(this);
+          container.append(subtractBtn);
+
+          this.spanCount = document.createElement("span");
+          this.spanCount.innerText = this.product.count;
+          container.append(this.spanCount);
+
+          const addBtn = document.createElement("button");
+          addBtn.innerText = "+";
+          addBtn.onclick = this.onAddEvent.bind(this);
+          container.append(addBtn);
+
+          return container;
+        }
+
+        creatToPay() {
+          const container = document.createElement("div");
+          container.className = "product-to-pay";
+          container.innerText = "До оплати :";
+
+          this.totalPrice = document.createElement("div");
+          this.totalPrice.innerText = this.product.price * this.product.count;
+          container.append(this.totalPrice);
+
+          return container;
+        }
+
+        onDeleteEvent() {
+          this.sendEvent("delete");
+        }
+
+        creatDeleteBtn() {
+          const deleteBtn = document.createElement("button");
+          deleteBtn.innerText = "x";
+          deleteBtn.onclick = this.onDeleteEvent.bind(this);
+
+          return deleteBtn;
+        }
+
+        render() {
+          const container = document.createElement("div");
+          container.setAttribute("productId", this.product.id);
+          container.className = "product-container";
+
+          container.append(this.creatImage());
+          container.append(this.creatAbout());
+          container.append(this.creatActions());
+          container.append(this.creatToPay());
+          container.append(this.creatDeleteBtn());
+
+          return container;
+        }
+      }
+
+      class ProductManager {
+        constructor(productsList) {
+          this.productsList = productsList;
+          this.el = this.render();
+        }
+        updateTotalPrice() {
+          this.totalSpan.innerText = this.totalSum();
+        }
+
+        onDelete() {
+          const productId = event.detail.product.id;
+          this.productsList = this.productsList.filter(
+            (prod) => prod.id !== productId
+          );
+          event.target.closest(".product-container").remove();
+          this.updateTotalPrice();
+        }
+        creatProducts() {
+          const productsContainer = document.createElement("div");
+          productsContainer.className = "products-container";
+
+          for (const product of this.productsList) {
+            let prod = new Product(product);
+            productsContainer.append(prod.el);
+          }
+
+          productsContainer.addEventListener(
+            "add",
+            this.updateTotalPrice.bind(this)
+          );
+          productsContainer.addEventListener(
+            "subtract",
+            this.updateTotalPrice.bind(this)
+          );
+          productsContainer.addEventListener(
+            "delete",
+            this.onDelete.bind(this)
+          );
+
+          return productsContainer;
+        }
+        totalSum() {
+          return this.productsList.reduce(
+            (prevSum, prod) => prevSum + prod.count * prod.price,
+            0
+          );
+        }
+        totalToPay() {
+          const container = document.createElement("div");
+          container.className = "total-pay";
+          container.innerText = "Загалом до оплати :";
+
+          this.totalSpan = document.createElement("span");
+          this.totalSpan.innerText = this.totalSum();
+          container.append(this.totalSpan);
+
+          return container;
+        }
+        render() {
+          const productManager = document.createElement("div");
+
+          productManager.append(this.creatProducts());
+          productManager.append(this.totalToPay());
+
+          document.querySelector(".cnt").append(productManager);
+
+          return productManager;
+        }
+      }
+
+      let productsList = [
+        {
+          id: 1,
+          link: "https://content2.rozetka.com.ua/goods/images/big/172266668.jpg",
+          about: "Навушники JBL TUNE 510 BT Black",
+          price: 1599,
+          count: 3,
+        },
+        {
+          id: 2,
+          link: "https://content.rozetka.com.ua/goods/images/big/318173586.jpg",
+          about: "Навушники JBL Tune 720BT Black",
+          price: 2399,
+          count: 7,
+        },
+        {
+          id: 3,
+          link: "https://content1.rozetka.com.ua/goods/images/big/429519064.jpg",
+          about: "Навушники JBL Live 770NC Black",
+          price: 4999,
+          count: 11,
+        },
+      ];
+      let p1 = new ProductManager(productsList);
+    </script>
+  </body>
+</html>
